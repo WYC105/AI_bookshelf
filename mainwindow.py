@@ -125,8 +125,8 @@ class MainWindow(QMainWindow):
         """)  
         self.edit_button.toggled.connect(self.toggle_edit_mode)
 
-        upload_action = QAction("上传图片识别", self)
-        upload_action.triggered.connect(self.upload_image_and_add_book)
+    #    upload_action = QAction("上传图片识别", self)
+    #    upload_action.triggered.connect(self.upload_image_and_add_book)
         
 
         # 添加到工具栏
@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.search_input)
         toolbar.addWidget(search_button)
         toolbar.addWidget(self.edit_button)
-        toolbar.addAction(upload_action)
+    #    toolbar.addAction(upload_action)
         
 
     # 快捷键
@@ -356,6 +356,7 @@ class MainWindow(QMainWindow):
         self.edit_mode = checked
 
     # 上传图片（demo）
+    """
     def upload_image_and_add_book(self):
         from image_book_recognizer import gemini_vision_books
         from douban_spider import DoubanBookSpider
@@ -394,6 +395,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "错误", f"处理失败：{e}")
+        """
 
     # 新建书架按钮激活函数
     def show_create_bookshelf_dialog(self):
