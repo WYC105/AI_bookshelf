@@ -23,6 +23,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("我的书架")
 
         self.edit_mode = False
+        self.sort_ascending_per_row = {}
         self.spider = DoubanBookSpider()
 
         # 加载json文件中的书架数据
@@ -73,8 +74,9 @@ class MainWindow(QMainWindow):
         add_row.addWidget(btn_add_shelf)
         add_row.addStretch()
         self.v_layout.addLayout(add_row)
-        
 
+        self.v_layout.addStretch(1)
+        
 
     # 编辑行书架名称
     def edit_row_name(self, row_index):
@@ -126,8 +128,8 @@ class MainWindow(QMainWindow):
         """)  
         self.edit_button.toggled.connect(self.toggle_edit_mode)
 
-    #    upload_action = QAction("上传图片识别", self)
-    #    upload_action.triggered.connect(self.upload_image_and_add_book)
+        upload_action = QAction("上传图片识别", self)
+        upload_action.triggered.connect(self.upload_image_and_add_book)
         
 
         # 添加到工具栏
@@ -135,7 +137,7 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.search_input)
         toolbar.addWidget(search_button)
         toolbar.addWidget(self.edit_button)
-    #    toolbar.addAction(upload_action)
+        toolbar.addAction(upload_action)
         
 
     # 快捷键
@@ -207,11 +209,47 @@ class MainWindow(QMainWindow):
         edit_button.setFixedSize(20, 20)
         edit_button.clicked.connect(lambda _, i=row_index: self.edit_row_name(i))
 
+        # 删除书架按钮（小×）
+        delete_button = QPushButton("×")
+        delete_button.setFixedSize(20, 20)
+        delete_button.setStyleSheet("""
+            QPushButton {
+                color: red;
+                font-weight: bold;
+                font-size: 16px;
+                border: none;
+                background: transparent;
+            }
+            QPushButton:hover {
+                background-color: #fdd;
+            }
+        """)
+        delete_button.setToolTip("删除当前书架")
+        delete_button.clicked.connect(lambda _, i=row_index: self.confirm_delete_bookshelf(i))
+
         # 排序按钮
-        sort_button = QPushButton("排序 ▼")
+        sort_button = QPushButton("排序")
         sort_button.setFixedSize(60, 30)
         sort_button.setCheckable(True)
-        sort_button.setStyleSheet("margin-top: 6px;")
+        sort_button.setStyleSheet("")
+
+
+        # 升降序切换按钮
+        order_button = QPushButton("↑")
+        order_button.setFixedSize(30, 30)
+        order_button.setCheckable(True)
+        order_button.setToolTip("切换升序 / 降序")
+
+        if row_index not in self.sort_ascending_per_row:
+            self.sort_ascending_per_row[row_index] = True
+        def update_order_button():
+            order_button.setText("↑" if self.sort_ascending_per_row[row_index] else "↓")
+        update_order_button()
+        def toggle_order():
+            self.sort_ascending_per_row[row_index] = not self.sort_ascending_per_row[row_index]
+            update_order_button()
+        order_button.clicked.connect(toggle_order)
+
 
         # 排序按钮挂载菜单
         sort_menu = QMenu(sort_button)
@@ -231,18 +269,23 @@ class MainWindow(QMainWindow):
         def on_sort_triggered(field_key):
             def sorter():
                 try:
-                    if field_key in ("price", "rating", "rating_count"):
+                    ascending = self.sort_ascending_per_row.get(row_index, True)
+                    reverse = not ascending
+                    if field_key in ("rating", "rating_count"):
                         self.books_2d[row_index]["books"].sort(
-                            key=lambda b: float(getattr(b, field_key, 0)) if getattr(b, field_key, None) not in (None, '') else 0
+                            key=lambda b: float(getattr(b, field_key, 0)) if getattr(b, field_key, None) not in (None, '') else 0,
+                            reverse=reverse
                         )
                     elif field_key == "pub_date":
                         # 假设日期格式可直接字符串比较
                         self.books_2d[row_index]["books"].sort(
-                            key=lambda b: getattr(b, field_key, "")
+                            key=lambda b: getattr(b, field_key, ""),
+                            reverse=reverse
                         )
                     else:
                         self.books_2d[row_index]["books"].sort(
-                            key=lambda b: getattr(b, field_key, "").lower() if getattr(b, field_key, None) else ""
+                            key=lambda b: getattr(b, field_key, "").lower() if getattr(b, field_key, None) else "" ,
+                            reverse=reverse
                         )
                     self.refresh_view()
                 except Exception as e:
@@ -263,9 +306,31 @@ class MainWindow(QMainWindow):
         sort_menu.aboutToShow.connect(on_menu_about_to_show)
         sort_menu.aboutToHide.connect(on_menu_about_to_hide)
 
+        edit_delete_layout = QHBoxLayout()
+        edit_delete_layout.setSpacing(4)
+        edit_delete_layout.setContentsMargins(0, 0, 0, 0)
+        edit_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        delete_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)       
+        edit_delete_layout.addWidget(edit_button)
+        edit_delete_layout.addWidget(delete_button)
+        edit_delete_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        edit_delete_widget = QWidget()
+        edit_delete_widget.setLayout(edit_delete_layout)
+
+        sort_layout = QHBoxLayout()
+        sort_layout.setSpacing(2)
+        sort_layout.setContentsMargins(0, 0, 0, 0)
+        sort_layout.addWidget(sort_button)
+        sort_layout.addWidget(order_button)
+        sort_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        sort_widget = QWidget()
+        sort_widget.setLayout(sort_layout)
+
         label_layout.addWidget(name_label)
-        label_layout.addWidget(edit_button)
-        label_layout.addWidget(sort_button)
+        label_layout.addWidget(edit_delete_widget)
+        label_layout.addWidget(sort_widget)
         label_layout.addStretch()
 
         # 生成左侧滚动区
@@ -292,6 +357,7 @@ class MainWindow(QMainWindow):
             row_books = row_data["books"]
             row_widget = self.create_named_book_row(row_name, row_books, row_index)
             self.v_layout.addWidget(row_widget)
+        self.add_add_shelf_button()
 
 
     # 变动书籍位置
@@ -357,7 +423,7 @@ class MainWindow(QMainWindow):
         self.edit_mode = checked
 
     # 上传图片（demo）
-    """
+    
     def upload_image_and_add_book(self):
         from image_book_recognizer import gemini_vision_books
         from douban_spider import DoubanBookSpider
@@ -389,14 +455,13 @@ class MainWindow(QMainWindow):
             # 3. 添加到书架第一排第一个位置
             if self.books_2d:
                 self.books_2d[0]["books"].insert(0, book)
-                self.refresh_bookshelf()
+                self.refresh_view()
                 QMessageBox.information(self, "添加成功", f"已添加图书：{book.title}")
             else:
                 QMessageBox.warning(self, "添加失败", "当前书架为空。")
 
         except Exception as e:
             QMessageBox.critical(self, "错误", f"处理失败：{e}")
-        """
 
     # 新建书架按钮激活函数
     def show_create_bookshelf_dialog(self):
@@ -413,4 +478,75 @@ class MainWindow(QMainWindow):
         self.books_2d.append(new_row_data)
         self.refresh_view()
 
+    def add_add_shelf_button(self):
+        add_row = QHBoxLayout()
+        btn_add_shelf = QPushButton("➕")
+        btn_add_shelf.setFixedHeight(40)
+        btn_add_shelf.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                padding: 8px 20px;
+                border: 2px dashed #888;
+                background-color: #f0f0f0;
+            }
+            QPushButton:hover {
+                background-color: #ddd;
+            }
+        """)
+        btn_add_shelf.clicked.connect(self.show_create_bookshelf_dialog)
+        add_row.addWidget(btn_add_shelf)
+        add_row.addStretch()
+        self.v_layout.addLayout(add_row)
+
+    def confirm_delete_bookshelf(self, row_index):
+        total_shelves = len(self.books_2d)
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("删除书架确认")
+        msg_box.setText(f"您确定要删除书架【{self.books_2d[row_index]['row_name']}】吗？")
+
+        msg_box.setInformativeText(
+            "选择操作：\n"
+            "- 点击【合并】，将书籍合并到相邻的另一个书架尾端\n"
+            "- 点击【删除】，删除当前书架所有书籍\n"
+            "- 点击【取消】，不执行任何操作"
+        )
+
+        delete_button = msg_box.addButton("删除", QMessageBox.ButtonRole.DestructiveRole)
+        cancel_button = msg_box.addButton(QMessageBox.StandardButton.Cancel)
+
+        if total_shelves > 1:
+            merge_button = msg_box.addButton("合并", QMessageBox.ButtonRole.AcceptRole)
+
+        msg_box.exec()
+
+        clicked_button = msg_box.clickedButton()
+        if total_shelves > 1 and clicked_button == merge_button:
+            self.merge_bookshelf_adjacent(row_index)
+        elif clicked_button == delete_button:
+            self.delete_bookshelf(row_index)
+        elif clicked_button == cancel_button:
+            pass
+    
+    def merge_bookshelf_adjacent(self, row_index):
+        total_shelves = len(self.books_2d)
+        current_books = self.books_2d[row_index]["books"]
+
+        if row_index == 0:
+            # 第一个书架，合并到第二个书架尾端
+            target_index = 1
+        elif row_index == total_shelves - 1:
+            # 最后一个书架，合并到前一个书架尾端
+            target_index = row_index - 1
+        else:
+            # 中间书架，默认合并到前一个书架尾端（你可以改成后一个）
+            target_index = row_index - 1
+
+        self.books_2d[target_index]["books"].extend(current_books)
+        del self.books_2d[row_index]
+        self.refresh_view()
+    
+    def delete_bookshelf(self, row_index):
+        # 删除当前书架
+        del self.books_2d[row_index]
+        self.refresh_view()
 
