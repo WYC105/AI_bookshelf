@@ -15,6 +15,7 @@ from widgets.book_row_widget import BookRowWidget
 
 
 
+
 # 主窗口类
 class MainWindow(QMainWindow):
     def __init__(self):
