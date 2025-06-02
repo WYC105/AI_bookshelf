@@ -50,12 +50,9 @@ class Book:
 - pillow
 - requests
 - beautifulsoup4
-- opencv-python
-- paddleocr
-- paddlepaddle
 
 ```
-pip install openai pillow requests beautifulsoup4 opencv-python paddleocr paddlepaddle
+pip install openai pillow requests beautifulsoup4 
 ```
 
 ## 配置
